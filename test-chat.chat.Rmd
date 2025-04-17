@@ -1,0 +1,84 @@
+---
+provider: openai
+model: gpt-4.1-nano
+# provider: ollama
+# model: granite3.3
+# model: PetrosStav/gemma3-tools:12b
+# model: llama3.2:3b
+# model: gemma3:4b
+knit: ragnar:::run_chat_sheet
+---
+# System
+
+You are an expert R programmer and mentor.
+
+# User
+
+```{r, echo = FALSE}
+chat$register_tool(tool_def = ellmer::tool(
+  .name = "get_current_weather", 
+  .description = "Get the current weather", 
+  location = ellmer::type_string(
+    "location name. If missing, defaults to the current user location", 
+    required = TRUE
+  ),
+  function(location = "") {
+    cat("weather was called for ", location %||% "NULL")
+    "sunny"
+  }
+))
+
+chat$register_tool(tool_def = ellmer::tool(
+  .name = "get_current_time", 
+  .description = "Get the current time", 
+  function() {
+    cat("time was called")
+    as.character(Sys.time())
+  }
+))
+```
+
+
+What is the current weather in new york?
+What is the current weather in warsaw?
+What is the current time? 
+
+
+
+
+# LLM
+
+```tool-call
+#| call-id: call_PnJE7hINRSWh3YH0KllzGaCa
+get_current_weather(location = "new york")
+```
+
+```tool-call
+#| call-id: call_4wJnPfJhdvs4UystXCVQtYlA
+get_current_weather(location = "warsaw")
+```
+
+```tool-call
+#| call-id: call_XSKjyVDTvIqJTdZKnp1izoiQ
+get_current_time()
+```
+
+```tool-call-result
+#| call-id: call_PnJE7hINRSWh3YH0KllzGaCa
+sunny
+```
+
+```tool-call-result
+#| call-id: call_4wJnPfJhdvs4UystXCVQtYlA
+sunny
+```
+
+```tool-call-result
+#| call-id: call_XSKjyVDTvIqJTdZKnp1izoiQ
+2025-04-17 10:39:02.130056
+```
+
+The current weather in New York is sunny, and in Warsaw, it is also sunny. The current time is 10:39 AM on April 17, 2025.
+
+# User
+
