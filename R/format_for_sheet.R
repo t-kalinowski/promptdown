@@ -1,3 +1,5 @@
+## This generic is currently unused after the latest refactor,
+## but we might want to bring it back to allow extenders
 format_for_sheet <- S7::new_generic("format_for_sheet", "x")
 
 S7::method(format_for_sheet, S7::class_list) <- function(x) {

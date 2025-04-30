@@ -1,22 +1,24 @@
-#' @import rlang
-NULL
-
-
-# get_current_weather <- function(location = "") {
-#   declare(tool(
-#     r"(Get the current weather)",
-#     location = type_string(
-#       "If missing, defaults to the current user location",
-#       required = TRUE
-#     )
-#   ))
-#   "sunny"
-# }
-
 #' Find the first tool() declaration in a function's top-level declare() calls
+#' Extract a `tool()` declaration from a function
 #'
-#' @param fn A function to inspect
-#' @return The tool(...) call if found, otherwise NULL
+#' Searches through a function's top-level `declare()` calls to find and return the first `tool()` declaration, if present.
+#'
+#' @param fn A function object to inspect.
+#' @return The `tool(...)` call if found, otherwise `NULL`.
+#' @keywords internal
+#' @noRd
+#' @examples
+#' get_current_weather <- function(location = "") {
+#'   declare(tool(
+#'     "Get the current weather",
+#'     location = type_string(
+#'       "If missing, defaults to the current user location",
+#'       required = TRUE
+#'     )
+#'   ))
+#'   "sunny"
+#' }
+#' find_tool_declaration(get_current_weather)
 find_tool_declaration <- function(fn) {
   if (!is.function(fn)) return()
   body <- fn_body(fn)
@@ -39,19 +41,4 @@ find_tool_declaration <- function(fn) {
 
   # No tool() declaration found
   NULL
-}
-
-
-if (FALSE) {
-  f = get_current_weather
-  cl <- find_tool_declaration(f)
-  cl$.fun <- f
-  call_modify(cl, .fun = )
-  tool <- NULL
-  # for(expr in )
-}
-
-
-chat_sheet <- function(...) {
-  browser()
 }
