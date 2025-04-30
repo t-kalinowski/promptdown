@@ -1,0 +1,37 @@
+
+```{comment}
+register a tool, see the model call it.
+```
+
+
+
+```{r, echo = FALSE}
+knitr::opts_chunk$set(comment = '', echo = FALSE)
+chat <- ellmer::chat_ollama(model = "qwen3:4b")
+```
+
+# System
+
+You are an expert R programmer and mentor.
+
+
+```{r, echo = FALSE}
+chat$register_tool(tool_def = ellmer::tool(
+  .name = "get_current_weather", 
+  .description = "Get the current weather", 
+  location = ellmer::type_string(
+    "location name. If missing, defaults to the current user location", 
+    required = TRUE
+  ),
+  function(location = "") {
+    "sunny"
+  }
+))
+```
+
+# User
+
+Whats the weather in new york? 
+
+
+

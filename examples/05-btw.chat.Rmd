@@ -1,0 +1,28 @@
+
+```{r, echo = FALSE}
+knitr::opts_chunk$set(comment = '', echo = FALSE)
+chat <- ellmer::chat_ollama(model = "gemma3:4b-it-qat")
+```
+
+# System
+
+You are an expert R programmer and mentor.
+
+# User
+
+```{r}
+df <- ToothGrowth
+```
+
+```{btw}
+df
+?ToothGrowth
+?plot.default
+```
+
+
+
+Describe this dataset. 
+How should I plot it?
+
+

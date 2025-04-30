@@ -1,0 +1,31 @@
+---
+# provider: openai
+# model: gpt-4.1-nano
+provider: ollama
+model: llama3.2
+knit: ragnar:::run_chat_sheet
+---
+
+```{r, echo = FALSE}
+knitr::opts_chunk$set(comment = '', echo = FALSE)
+chat <- ellmer::chat_ollama(model = "gemma3:4b-it-qat")
+```
+
+
+# System
+
+You are an expert R programmer and mentor.
+
+# User
+
+Describe this image
+
+```{r, include=FALSE}
+png("myfile.png")
+curve(sin, -2*pi, 2*pi, xname = "t")
+dev.off()
+```
+
+```{r}
+ellmer::content_image_file("myfile.png")
+```

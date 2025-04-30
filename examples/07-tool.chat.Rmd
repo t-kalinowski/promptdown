@@ -1,0 +1,42 @@
+```{comment}
+In this example, the tool call is dynamically evaluated by knitr
+```
+
+
+```{r, echo = FALSE}
+knitr::opts_chunk$set(comment = '', echo = FALSE)
+
+library(ellmer)
+chat <- ellmer::chat_ollama(model = "qwen3:4b")
+```
+
+# System
+
+You are an expert R programmer and mentor.
+
+```{r, echo = FALSE}
+get_current_weather <- function(location = "") {
+  "sunny"
+}
+
+chat$register_tool(
+  tool_def = tool(
+    get_current_weather,
+    "Get the current weather",
+    location = type_string(
+      "location name. If missing, defaults to the current user location",
+      required = TRUE
+    )
+  )
+)
+```
+
+# User
+
+What is the current weather in new york? /no_think
+
+# LLM
+
+```{tool}
+get_current_weather(location = "New York")
+```
