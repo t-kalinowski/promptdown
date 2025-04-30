@@ -7,6 +7,6 @@
 # * https://testthat.r-lib.org/articles/special-files.html
 
 library(testthat)
-library(refinery)
+library(promptdown)
 
-test_check("refinery")
+test_check("promptdown")
