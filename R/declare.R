@@ -42,3 +42,5 @@ find_tool_declaration <- function(fn) {
   # No tool() declaration found
   NULL
 }
+
+# rstudioapi::readRStudioPreference("knit_working_dir", "project")

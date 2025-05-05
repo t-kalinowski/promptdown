@@ -1,2 +1,4 @@
 ^promptdown\.Rproj$
 ^\.Rproj\.user$
+^_chats$
+^examples$

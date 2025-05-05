@@ -79,6 +79,7 @@ eng_tool <- function(options) {
   } else {
     if (inherits(string, "json")) {
       append(options$class.output) <- "json"
+      class(string) <- NULL
     }
   }
 

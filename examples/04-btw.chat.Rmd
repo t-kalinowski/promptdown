@@ -1,4 +1,5 @@
 ```{r, echo = FALSE}
+library(promptdown)
 knitr::opts_chunk$set(comment = '', echo = FALSE)
 chat <- ellmer::chat_ollama(model = "gemma3:4b-it-qat")
 ```
@@ -15,7 +16,6 @@ df <- ToothGrowth
 
 ```{btw}
 df
-?dplyr::filter
 ```
 
 Describe the `df` dataset.
