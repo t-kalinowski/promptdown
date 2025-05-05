@@ -1,4 +1,5 @@
 Version: 1.0
+ProjectId: 77654f06-03f3-432f-8ee4-5bcdfb6336b3
 
 RestoreWorkspace: No
 SaveWorkspace: No
@@ -20,3 +21,7 @@ BuildType: Package
 PackageUseDevtools: Yes
 PackageInstallArgs: --no-multiarch --with-keep.source
 PackageRoxygenize: rd,collate,namespace
+
+MarkdownWrap: Column
+MarkdownWrapAtColumn: 72
+MarkdownCanonical: Yes

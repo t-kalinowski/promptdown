@@ -1,0 +1,4 @@
+Name: Run chat sheet.
+Description: Append LLM completion to the focused promptdown document.
+Binding: run_chat_sheet
+Interactive: false
