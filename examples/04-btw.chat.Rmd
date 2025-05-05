@@ -1,4 +1,3 @@
-
 ```{r, echo = FALSE}
 knitr::opts_chunk$set(comment = '', echo = FALSE)
 chat <- ellmer::chat_ollama(model = "gemma3:4b-it-qat")
@@ -14,11 +13,9 @@ You are an expert R programmer and mentor.
 df <- ToothGrowth
 ```
 
-```{r, echo = TRUE}
-dplyr::glimpse(df)
+```{btw}
+df
+?dplyr::filter
 ```
 
-
-
 Describe the `df` dataset.
-

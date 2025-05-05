@@ -1,9 +1,6 @@
----
-output: 
-  ellmer::Chat: 
-    stream: true
-    # destination: [:file:]
----
+```{embed}
+llm-assistant-instructions.md
+```
 
 ```{r, echo = FALSE}
 knitr::opts_chunk$set(comment = '', echo = FALSE)
@@ -11,25 +8,17 @@ chat <- ellmer::chat_ollama(model = "gemma3:4b-it-qat")
 ```
 
 # System
-```{embed}
-.llm_prompts
-```
-
 
 You are an expert R programmer and mentor. Be concise.
-Never use base R.
 
 # User
 
-
-How can I subset a dataframe?
-
-
 ```{r}
-print(df)
+df <- mtcars
 ```
 
+What's interesting about this dataframe?
 
-
-
-
+```{r, echo = TRUE}
+df
+```

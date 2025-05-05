@@ -1,0 +1,63 @@
+---
+output: markdown
+knit: ragnar:::run_chat_sheet
+---
+
+```{r, echo = FALSE}
+knitr::opts_chunk$set(comment = '', echo = FALSE)
+
+library(ellmer)
+chat <- ellmer::chat_ollama(model = "qwen3:4b")
+```
+
+# System
+
+You are an expert R programmer and mentor.
+
+```{r, echo = FALSE}
+get_current_weather <- function(location = "") {
+  list(temp = 65, conditions = "sunny")
+}
+
+chat$register_tool(
+  tool_def = tool(
+    get_current_weather,
+    "Get the current weather",
+    location = type_string(
+      "location name. If missing, defaults to the current user location",
+      required = TRUE
+    )
+  )
+)
+```
+
+# User
+
+What is the current weather in new york?
+
+# LLM
+
+```{tool}
+get_current_weather(location = "New York")
+```
+
+```{r}
+
+```
+
+# LLM
+
+<think> Okay, the user asked for the current weather in New York. I
+called the get_current_weather function with location set to New York.
+The response came back with a temperature of 65 and sunny conditions.
+Now I need to present this information in a clear and friendly way. Let
+me check if there are any other details I should include, but the
+response only has temp and conditions. I'll format it into a sentence
+that answers their question directly. Make sure to mention both the
+temperature and the weather condition. Also, maybe add a polite closing
+statement. Alright, that should cover it. </think>
+
+The current weather in New York is 65°F with sunny conditions. 🌞 Let me
+know if you need additional details!
+
+# User

@@ -1,16 +1,7 @@
----
-# provider: openai
-# model: gpt-4.1-nano
-provider: ollama
-model: llama3.2
-knit: ragnar:::run_chat_sheet
----
-
 ```{r, echo = FALSE}
 knitr::opts_chunk$set(comment = '', echo = FALSE)
 chat <- ellmer::chat_ollama(model = "gemma3:4b-it-qat")
 ```
-
 
 # System
 

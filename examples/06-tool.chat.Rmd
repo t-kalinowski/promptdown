@@ -1,12 +1,7 @@
-
-```{comment}
-register a tool, see the model call it.
-```
-
-
-
 ```{r, echo = FALSE}
 knitr::opts_chunk$set(comment = '', echo = FALSE)
+
+library(ellmer)
 chat <- ellmer::chat_ollama(model = "qwen3:4b")
 ```
 
@@ -14,24 +9,41 @@ chat <- ellmer::chat_ollama(model = "qwen3:4b")
 
 You are an expert R programmer and mentor.
 
-
 ```{r, echo = FALSE}
-chat$register_tool(tool_def = ellmer::tool(
-  .name = "get_current_weather", 
-  .description = "Get the current weather", 
-  location = ellmer::type_string(
-    "location name. If missing, defaults to the current user location", 
-    required = TRUE
-  ),
-  function(location = "") {
-    "sunny"
-  }
-))
+get_current_weather <- function(location = "") {
+  list(temp = 65, conditions = "sunny")
+}
+
+chat$register_tool(
+  tool_def = tool(
+    get_current_weather,
+    "Get the current weather",
+    location = type_string(
+      "location name. If missing, defaults to the current user location",
+      required = TRUE
+    )
+  )
+)
 ```
 
 # User
 
-Whats the weather in new york? 
+What is the current weather in new york? /no_think
 
+# LLM
 
+``` tool
+get_current_weather(location = "new york")
+```
 
+```         
+{"temp":65,"conditions":"sunny"}
+```
+
+<think>
+
+</think>
+
+The current weather in New York is 65 degrees with sunny conditions.
+
+# User

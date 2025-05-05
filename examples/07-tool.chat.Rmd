@@ -1,12 +1,5 @@
-```{comment}
-In this example, the tool call is dynamically evaluated by knitr
-```
-
-
 ```{r, echo = FALSE}
-knitr::opts_chunk$set(comment = '', echo = FALSE)
-
-library(ellmer)
+knitr::opts_chunk$set(comment = '', echo = T)
 chat <- ellmer::chat_ollama(model = "qwen3:4b")
 ```
 
@@ -16,27 +9,52 @@ You are an expert R programmer and mentor.
 
 ```{r, echo = FALSE}
 get_current_weather <- function(location = "") {
-  "sunny"
-}
-
-chat$register_tool(
-  tool_def = tool(
-    get_current_weather,
+  declare(tool(
     "Get the current weather",
     location = type_string(
-      "location name. If missing, defaults to the current user location",
+      "If missing, defaults to the current user location",
       required = TRUE
     )
-  )
-)
+  ))
+  list(temp = 65, conditions = "sunny")
+}
+# find_tool_declaration(get_current_weather)
+```
+
+foo
+
+```{btw}
+df
+```
+
+```{tool}
+get_current_weather(loc = "newyork")
 ```
 
 # User
 
-What is the current weather in new york? /no_think
+Whats the weather in new york?
 
 # LLM
 
-```{tool}
-get_current_weather(location = "New York")
+``` tool
+get_current_weather(location = "new york")
 ```
+
+```         
+{"temp":65,"conditions":"sunny"}
+```
+
+<think> Okay, the user asked for the weather in New York. I called the
+get_current_weather function with location set to "new york". The
+response came back with a temperature of 65 and conditions "sunny". Now
+I need to present this information in a clear and friendly way. Let me
+check if there are any other details needed, but the function only
+provided temp and conditions. I'll format the answer to include both
+elements and make sure it's easy to read. Maybe add a sentence about it
+being a nice day. Alright, time to put it all together. </think>
+
+The current weather in New York is **65°F** with **sunny** conditions.
+It's a nice day! ☀️
+
+# User
