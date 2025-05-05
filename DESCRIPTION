@@ -1,9 +1,9 @@
 Package: promptdown
-Title: What the Package Does (One Line, Title Case)
+Title: Literate Programming for LLM Prompt Composition.
 Version: 0.0.0.9000
 Authors@R:
     person("Tomasz", "Kalinowski", , "tomasz@posit.co", role = c("aut", "cre"))
-Description: What the package does (one paragraph).
+Description: A framework for composing prompts through literate programming. It uses knitr and ellmer to enable language model interactions where users can fully see and compose the full context sent to LLMs.
 License: `use_mit_license()`, `use_gpl3_license()` or friends to pick a
     license
 Encoding: UTF-8
@@ -11,6 +11,25 @@ Roxygen: list(markdown = TRUE)
 RoxygenNote: 7.3.2
 Suggests:
     testthat (>= 3.0.0),
-    envir,
-    glue
+    rstudioapi
 Config/testthat/edition: 3
+Imports: 
+    knitr,
+    ellmer,
+    ragnar,
+    S7,
+    stringi,
+    envir,
+    yaml,
+    btw,
+    fs,
+    vctrs,
+    purrr,
+    dplyr,
+    rlang,
+    coro,
+    uuid,
+    glue
+Remotes:  
+    tidyverse/ragnar
+    posit-dev/btw
