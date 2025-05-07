@@ -1,15 +1,19 @@
 # promptdown <img src="man/figures/logo.png" alt="The package logo, a small cute elephant holding a quill and writing promptdown" align="right" height="240"/>
 
-<!-- badges: start -->
+The goal of **promptdown** is to make it easy to compose prompts for
+LLMs. Think [knitr](https://yihui.org/knitr/) +
+[ellmer](https://ellmer.tidyverse.org). Key features:
 
-<!-- badges: end -->
-
-The goal of promptdown is to make it easy to compose prompts for llms.\
-You can think of it as knitr + ellmer.
+-   Full visibility and control over what’s sent to the model.
+-   Compose dynamic prompts using markdown and code chunks.
+-   Chat interactively or compose deployable agents.
 
 <br>
 
-![intro demo video](https://github.com/user-attachments/assets/e56c5920-2b97-4058-b75f-3917a5acbfd7)
+## Example chat session
+
+![intro demo
+video](https://github.com/user-attachments/assets/ec77daf8-975a-4f06-83da-f9572deeedf3)
 
 ## Install
 
@@ -21,46 +25,37 @@ pak::pak("t-kalinowski/promptdown")
 
 ## Why
 
-Coaxing desirable output from an LLM is an act of iterating on the
-context. "Context" here meaning "all the text" sent to the model to
-auto-complete.
+Coaxing desirable output from an LLM is the act of iterating on the
+prompt. "Prompt" here meaning *all* the text sent to the model. That
+includes: the system prompt, tool definitions, tool calls and results,
+added files, prior messages, even stray formatting.
+
+Most interfaces don’t want you to think about any of that.
 
 The most common interface to an LLM, the "chat", frustrates any attempt
-at context management. It is an append-only log of turns where you are
-encouraged to compose your text in a comically small input box without
-the standard features of a typical text editor.
+at prompt management. It is an append-only log of turns where you are
+encouraged to compose in a comically small input box without the basic
+features of a typical text editor.
 
-Worse, the interaction starts pre-seeded with a large hidden context
-that only grows while you engage in a pretend conversation with the
-autocomplete. The system prompt, available tool definitions, tool calls,
-tool call results, and even external content like added files, invite no
-opportunity to observe let alone refine the context that is assembled.
+Worse, the interaction starts with a large hidden component that only
+grows while you engage in a pretend conversation with the autocomplete.
+The system prompt, available tool definitions, tool calls and results,
+and even external content like added files, invite no opportunity to
+observe--let alone refine--the assembled prompt.
 
 The append-only nature of a chat interface means that all interactions
 that go on long enough end the same way: going off a cliff in usefulness
-as the context gets too large or too full of irrelevant text that
+as the context gets too large or too cluttered with irrelevant text that
 confuses the LLM.
 
 Other interface styles, like ghost text completion, coding agents, or
 task-focused assistants invoked inline, all similarly limit visibility
-or control over the actual context sent to the LLM.
+or control over the actual prompt sent to the LLM.
 
-<!-- Using LLMs like this (to me) often feels like trying to play piano with oven mitts.  -->
+LLMs *are* magical, but the interface to them does not have to be.
 
-Curtains and smoke all in service of the illusion you're interacting
-with a sentience and not an autocomplete. In the short-term these impede
-your ability to get a useful response; in the longer term they impede
-your ability to develop an intuition about how LLMs respond, and how to
-build workflows ontop of them.
-
-LLMs *are* somewhat magical, but the interface to them does not have to
-be. This package is another imagining of what a useful interface to an
-LLMs is.
-
-Prompdown facilitates a more intentional mode of interacting with the
-LLM: instead of iterating by adding to an append-only ever-growing
-context full of potentially irrelevant messages and hidden context, you
-can are invited to observe and refine the *full context* on *each turn*.
+**promptdown** invites you to work directly with the prompt; to see and
+shape all of it, every turn.
 
 ------------------------------------------------------------------------
 
@@ -159,29 +154,23 @@ functions as prose and the prose functions as code. In this light,
 prompt composition, is yet another incarnation of the mature practice of
 literate programming.
 
-Effective prompt composition requires the author to not only have full
-control over the context sent for completion, but more importantly, to
-have developed a strong intuition about LLM responses. Developing this
-intuition requires many LLM interactions with full visibility, ideally
-with a tight feedback loop with frequent ad-hoc controlled interaction
-experiments. A vibe intuition.
 
-In other words, promptdown facilitates is a seamless transition from an
-interactive ephemeral experience to composing a deployed agent.
+It’s literate programming for LLMs. The code is prose. The prose is
+code.
 
-## Additional conveniences:
+------------------------------------------------------------------------
 
-In additional to the standard knitr engines like `r`, `python`, `julia`,
-`verbatim`, `embed`, etc, promptdown install two additional engines for
-convenience:
+## Additional conveniences
+
+Along with standard knitr engines (`r`, `python`, `julia`, `verbatim`,
+`embed`, etc.), promptdown adds two more:
 
 ### `tool`
 
-This is a dynamic code chunk that is equivalent to the LLM calling a
-tool. It will typically be found under an `## LLM` turn. It invokes the
-tool like an LLM would and outputs the result like the LLM will see. You
-can use this to quickly iterate on tool defs, or as a dynamic
-composition tool. Here is an example:
+This simulates the LLM calling a tool. You can use it to quickly test
+tool definitions or generate the prompt dynamically.
+
+Example:
 
 ```` markdown
 ```{r}
@@ -221,27 +210,20 @@ get_current_weather(location = "New York")
 
 ### `btw`
 
-{btw} is a package full of convenience functions for quickly assembling
-a prompt context.
+The `{btw}` package offers helpers for assembling context quickly. Use
+the `{btw}` engine for fast previews using standard `btw::btw()` syntax:
 
-You can use the `{btw}` engine to quickly preview and assemble context.
-All the standard syntax of `btw::btw()` is valid.
-
-````` markdown
+```` markdown
 ```{btw}
 mtcars
 ```
 
-```` markdown
+````markdown
 ## Context
 
 mtcars
 ```json
-## Context
-
-mtcars
-```json
-{"n_cols":11,"n_rows":32,"groups":[],"class":"data.frame","columns":{"mpg":{"variable":"mpg","type":"numeric","mean":20.0906,"sd":6.0269,"p0":10.4,"p25":15.425,"p50":19.2,"p75":22.8,"p100":33.9},"cyl":{"variable":"cyl","type":"numeric","mean":6.1875,"sd":1.7859,"p0":4,"p25":4,"p50":6,"p75":8,"p100":8},"disp":{"variable":"disp","type":"numeric","mean":230.7219,"sd":123.9387,"p0":71.1,"p25":120.825,"p50":196.3,"p75":326,"p100":472},"hp":{"variable":"hp","type":"numeric","mean":146.6875,"sd":68.5629,"p0":52,"p25":96.5,"p50":123,"p75":180,"p100":335},"drat":{"variable":"drat","type":"numeric","mean":3.5966,"sd":0.5347,"p0":2.76,"p25":3.08,"p50":3.695,"p75":3.92,"p100":4.93},"wt":{"variable":"wt","type":"numeric","mean":3.2172,"sd":0.9785,"p0":1.513,"p25":2.5812,"p50":3.325,"p75":3.61,"p100":5.424},"qsec":{"variable":"qsec","type":"numeric","mean":17.8487,"sd":1.7869,"p0":14.5,"p25":16.8925,"p50":17.71,"p75":18.9,"p100":22.9},"vs":{"variable":"vs","type":"numeric","mean":0.4375,"sd":0.504,"p0":0,"p25":0,"p50":0,"p75":1,"p100":1},"am":{"variable":"am","type":"numeric","mean":0.4062,"sd":0.499,"p0":0,"p25":0,"p50":0,"p75":1,"p100":1},"gear":{"variable":"gear","type":"numeric","mean":3.6875,"sd":0.7378,"p0":3,"p25":3,"p50":4,"p75":4,"p100":5},"carb":{"variable":"carb","type":"numeric","mean":2.8125,"sd":1.6152,"p0":1,"p25":2,"p50":2,"p75":4,"p100":8}}}
+{"n_cols":11,"n_rows":32,"groups":[],"class":"data.frame","columns":{...}}
 ```
 ````
 `````
