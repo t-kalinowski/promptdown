@@ -7,8 +7,9 @@
 The goal of promptdown is to make it easy to compose prompts for llms.\
 You can think of it as knitr + ellmer.
 
+<br>
 
-![intro demo video](https://github.com/user-attachments/assets/a5ed8e32-6c60-4875-932b-147b0f2f7e84)
+![intro demo video](https://github.com/user-attachments/assets/e56c5920-2b97-4058-b75f-3917a5acbfd7)
 
 ## Install
 
@@ -144,9 +145,9 @@ interface.
 However, "agentic" LLM workflows are just around the corner (if not here
 already). Data professionals can bundle a prompt with some tool defs and
 deploy them to deliver value, similar in category to a dashboard, an
-automated email report, or an API. A carefully crafted prompt and set of
-tools, deployed on a trigger, schedule, or for self-service chat by data
-consumers.
+automated email report, or an API. An "agent" meaning A carefully
+crafted prompt and set of tools, deployed on a trigger, schedule, or as
+a self-service endpoint for data consumers.
 
 To enable this usecase, a promptdown document is also a deployable
 artifact, similar to an Rmarkdown document that gets deployed as a
@@ -199,7 +200,7 @@ get_current_weather <- function(location = "") {
     "Get the current weather",
     location = type_string()
   ))
-  
+
   list(temp = 65, conditions = "sunny")
 }
 ```

@@ -3,6 +3,7 @@
 #' @import ellmer
 #' @import S7
 #' @import rlang
+#' @importFrom dotty .
 #' @importFrom dplyr if_else mutate group_by summarise arrange
 NULL
 
@@ -33,7 +34,20 @@ imap <- function(.x, .f, ...) {
   out
 }
 
-map_lgl <- function(.x, .f, ...) vapply(X = .x, FUN = .f, FUN.VALUE = TRUE, ...)
+
+map_lgl <- function(.x, .f, ...) {
+  `names<-`(
+    vapply(X = .x, FUN = .f, FUN.VALUE = TRUE, ..., USE.NAMES = FALSE),
+    value = names(.x)
+  )
+}
+
+map_chr <- function(.x, .f, ...) {
+  `names<-`(
+    vapply(X = .x, FUN = .f, FUN.VALUE = "", ..., USE.NAMES = FALSE),
+    value = names(.x)
+  )
+}
 
 `prepend<-` <- function(x, value) {
   c(x[0L], value, x)
@@ -80,9 +94,10 @@ stri_collapse_lines <- function(...) stri_collapse(..., sep = "\n")
 stri_flatten_lines <- stri_collapse_lines
 
 
-timestamp_filename <-
-  function(prefix = "", ext = "", format = "%Y-%m-%d_%Hh%Mm%OS3s") {
-    ts <- gsub(".", "-", strftime(Sys.time(), format = format), fixed = TRUE)
-    if (nzchar(ext) && !startsWith(ext, ".")) ext <- paste0(".", ext)
-    paste0(prefix, ts, ext)
-  }
+is_rstudio <- function() {
+  exists("RStudio.Version", envir = globalenv())
+}
+
+is_positron <- function() {
+  exists(".ps.ark.version", envir = globalenv())
+}

@@ -29,8 +29,6 @@ trace_tool <- function(tool, emit) {
     #         if (inherits(result, "ellmer::Content"))
     #           stop("tool returning content not yet implemented")
     #
-    #         browser()
-    #
     #         display_result <- capture.output(print(result)) |>
     #           stri_flatten_lines(end_with_newline = TRUE)
     #
@@ -123,11 +121,24 @@ find_tool <- function(env, name) {
   chat$get_tools()[[name]] %||% as_tool_def(env[[name]], name)
 }
 
-find_chat <- function(env) {
-  for (chat_name_candidate in c("chat", "ch", ".chat", ".ch", names(env))) {
-    chat <- env[[chat_name_candidate]]
-    if (inherits(chat, "Chat")) return(chat)
+
+parse_tool_result <- function(x, request) {
+  matches <- stri_match_first_regex(
+    x,
+    "^```([^\n]*)\n(.*)\n```$",
+    dot_all = TRUE
+  )
+  type <- matches[, 2]
+  value <- matches[, 3]
+
+  if (type == "error") {
+    return(ContentToolResult(error = value))
+  }
+  if (type == "json") {
+    class(value) <- "json"
+  } else if (type == "yaml") {
+    value <- yaml::yaml.load(value)
   }
 
-  stop("Chat sheet must define a 'Chat' object")
+  ContentToolResult(value = value, request = request)
 }

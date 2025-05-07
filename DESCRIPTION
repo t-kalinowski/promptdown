@@ -29,7 +29,8 @@ Imports:
     rlang,
     coro,
     uuid,
-    glue
-Remotes:  
-    tidyverse/ragnar
+    glue,
+    dotty
+Remotes: 
+    tidyverse/ragnar,
     posit-dev/btw

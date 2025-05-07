@@ -6,22 +6,36 @@ Emitter <- R6::R6Class(
     connection = NULL,
     opened_connection = FALSE,
     rstudio_document_id = NULL,
+    positron_active_document = FALSE,
 
     initialize = function(target = NULL) {
       self$target <- target
 
-      if (is.null(target) || identical(target, "")) {
+      if (identical(target, "")) {
         self$connection <- stdout()
       } else if (is.character(target)) {
-        id <- rstudioapi::documentId(allowConsole = FALSE)
-        path <- normalizePath(rstudioapi::documentPath(id), mustWork = FALSE)
+        if (is_rstudio()) {
+          context <- rstudioapi::getSourceEditorContext()
+          path <- normalizePath(context$path, mustWork = FALSE)
 
-        if (normalizePath(target, mustWork = FALSE) == path) {
-          self$rstudio_document_id <- id
-        } else {
-          self$connection <- file(target, "a")
-          self$opened_connection <- TRUE
+          if (normalizePath(target, mustWork = FALSE) == path) {
+            self$rstudio_document_id <- context$id
+            return()
+          }
         }
+
+        if (is_positron()) {
+          # id not supported yet
+          path <- rstudioapi::getSourceEditorContext()$path
+          path <- normalizePath(path, mustWork = FALSE)
+          if (normalizePath(target, mustWork = FALSE) == path) {
+            self$positron_active_document <- TRUE
+            return()
+          }
+        }
+
+        self$connection <- file(target, "a")
+        self$opened_connection <- TRUE
       } else if (inherits(target, "connection")) {
         self$connection <- target
       } else if (is.function(target)) {
@@ -33,7 +47,9 @@ Emitter <- R6::R6Class(
     emit = function(msg) {
       if (!is.null(self$connection)) {
         cat(msg, file = self$connection, sep = "", append = TRUE)
-      } else if (!is.null(self$rstudio_document_id)) {
+      } else if (
+        !is.null(self$rstudio_document_id) || self$positron_active_document
+      ) {
         rstudioapi::insertText(
           location = Inf,
           msg,
@@ -55,6 +71,8 @@ Emitter <- R6::R6Class(
       }
       if (!is.null(self$rstudio_document_id)) {
         rstudioapi::documentSave(id = self$rstudio_document_id)
+      } else if (self$positron_active_document) {
+        rstudioapi::documentSave()
       }
     }
   ),
@@ -76,8 +94,8 @@ MultiEmitter <- R6::R6Class(
       self$emitters <- targets |> drop_nulls() |> lapply(Emitter$new)
     },
 
-    emit = function(...) {
-      msg <- stri_collapse(...)
+    emit = function(msg) {
+      msg <- stri_flatten(msg)
       for (emitter in self$emitters) {
         emitter$emit(msg)
       }
