@@ -7,6 +7,9 @@
 The goal of promptdown is to make it easy to compose prompts for llms.\
 You can think of it as knitr + ellmer.
 
+
+![intro demo video](https://github.com/user-attachments/assets/a5ed8e32-6c60-4875-932b-147b0f2f7e84)
+
 ## Install
 
 ``` r
