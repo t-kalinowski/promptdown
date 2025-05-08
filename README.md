@@ -1,11 +1,22 @@
 # promptdown <img src="man/figures/logo.png" alt="The package logo, a small cute elephant holding a quill and writing promptdown" align="right" height="240"/>
 
 The goal of **promptdown** is to make it easy to compose prompts for
-LLMs. Think [knitr](https://yihui.org/knitr/) +
-[ellmer](https://ellmer.tidyverse.org). Key features:
+LLMs. It's a literate programming interface for LLMs. Think
+[knitr](https://yihui.org/knitr/) +
+[ellmer](https://ellmer.tidyverse.org).
 
--   Full visibility and control over what’s sent to the model.
--   Compose dynamic prompts using markdown and code chunks.
+Coaxing desirable output from an LLM means iterating on the prompt--all
+of it. That includes: prior chat turns, the system prompt, tool
+definitions, tool calls and results, added files, thinking segments,
+even stray formatting.
+
+**promptdown** invites you to work directly with the prompt; to see and
+shape all of it, every turn.
+
+Key features:
+
+-   Write prompts using markdown and code chunks.
+-   Inspect and control the full context sent to the model.
 -   Chat interactively or compose deployable agents.
 
 <br>
@@ -21,151 +32,121 @@ video](https://github.com/user-attachments/assets/ec77daf8-975a-4f06-83da-f9572d
 pak::pak("t-kalinowski/promptdown")
 ```
 
-------------------------------------------------------------------------
+## How it works
 
-## Why
+You write in a prompt markdown document. This is a plain text file that
+looks like a normal [Quarto](https://quarto.org) or Rmarkdown document.
 
-Coaxing desirable output from an LLM is the act of iterating on the
-prompt. "Prompt" here meaning *all* the text sent to the model. That
-includes: the system prompt, tool definitions, tool calls and results,
-added files, prior messages, even stray formatting.
+The promptdown document defines the full request that's submitted to the
+LLM for completion. Each chat turn, the document is submitted to the
+LLM, and the LLM response is written back to the same document. In this
+way it's similar to a conventional chat interface, except it's all plain
+text, and you can easily observe and edit any part of it at any time.
+There is no hidden prompt added.
 
-Most interfaces don’t want you to think about any of that.
+All the interactive features and tooling of dynamic documents are
+available. Use dynamic code chunks in R, Python, or [any other
+language](https://bookdown.org/yihui/rmarkdown/language-engines.html) to
+compose your prompt. See in-line previews of code chunks evaluations
+(including plots and images). Use fine-grained control over output with
+chunk options like `echo: false` and `results: asis`. Enjoy live access
+to your current R or Python session REPL. Work in the full-featured text
+editor you are already comfortable with.
 
-The most common interface to an LLM, the "chat", frustrates any attempt
-at prompt management. It is an append-only log of turns where you are
-encouraged to compose in a comically small input box without the basic
-features of a typical text editor.
+You can also equip the LLM with tools (functions) it can call. In a code
+chunk, simply define a function with a `declare(tool(...))` annotation,
+or register tools directly using the standard
+`ellmer::Chat$register_tool()` interface. Tool calls and results are
+presented as plain text that can be edited or removed for the next turn.
+You can even turn tool calls into dynamic code chunks to iterate on.
 
-Worse, the interaction starts with a large hidden component that only
-grows while you engage in a pretend conversation with the autocomplete.
-The system prompt, available tool definitions, tool calls and results,
-and even external content like added files, invite no opportunity to
-observe--let alone refine--the assembled prompt.
+To submit a prompt, call `run_chat_sheet()` (recommended to bind to
+keyboard shortcut Ctrl/Cmd + Shift + R). This will:
 
-The append-only nature of a chat interface means that all interactions
-that go on long enough end the same way: going off a cliff in usefulness
-as the context gets too large or too cluttered with irrelevant text that
-confuses the LLM.
+1.  Evaluate dynamic code chunks, typically to:
 
-Other interface styles, like ghost text completion, coding agents, or
-task-focused assistants invoked inline, all similarly limit visibility
-or control over the actual prompt sent to the LLM.
+    -   Create the `ellmer::Chat` object which picks the provider and
+        model config.
+    -   Emit text output to include in the prompt.
+    -   Register tools.
 
-LLMs *are* magical, but the interface to them does not have to be.
+2.  Render the document into a static sequence of chat turns.
 
-**promptdown** invites you to work directly with the prompt; to see and
-shape all of it, every turn.
+3.  Submit the turns and tools for a completion request to the LLM.
 
-------------------------------------------------------------------------
+4.  Stream the LLM response back into the document under a new `# LLM`
+    heading
 
-## How it works.
+You can freely edit any part of the prompt in between completion
+requests (it’s all plain text). You can even edit while the output from
+the previous request is still streaming.
 
-You write in a prompt markdown document. This looks like a conventional
-Quarto or Rmarkdown document with code chunks where you can evaluate R
-or Python or [any
-other](https://bookdown.org/yihui/rmarkdown/language-engines.html) type
-of code. You can also include verbatim content from other files via the
-`verbatim` or `embed` engine, or from other dynamic documents via the
-`knit_child` option.
-
-Because this is a Quarto markdown document, all the features and tooling
-of dynamic documents are available. You get see inline previews of code
-chunk evaluations (including images and data plots), support for precise
-control over the output with options like `echo: false` or
-`results: asis`. You get live access to the current R and Python session
-at the REPL. And you can use all the standard tools of text composition,
-like the Visual Editor in RStudio or VS Code (or Positron), the spell
-checker, text snippets, and the full set of keyboard shortcuts and
-conveniences you've configured your text editor with.
-<https://quarto.org/docs/visual-editor/>
-<https://quarto.org/docs/visual-editor/vscode/>
-
-Within the promptdown document you can have specific headings:
-`# System` `# User` and `# LLM`. (Notice, no attempt is made to obscure
-the fact that you're dealing with an autocomplete - the responder is an
-"LLM", not an "Assistant"). These headings delineate chat `Turn`s, when
-assembling an LLM completion request.
-
-You can also equip the LLM with tools (functions) it can call.
-Promptdown provides an affordance for auto-registering functions defined
-with a `declare(tool(...))` annotation as tools, or you can register
-tools using the conventional `ellmer::Chat$register_tool()` interface.
-
-Tool calls and tool call results are fully visible in the LLM response,
-(needless to say, as plain text). You can edit the tool calls and
-results before submitting subsequent turns. You can convert a tool call
-into a dynamic code chunks to iterate on tool call, or you can just
-delete them if they're no longer relevant.
-
-To submit a context for completion, you can run
-`promptdown::run_chat_sheet()` (Recommended to bind to keyboard shortcut
-cmd/ctrl + shift + R). This will:
-
-1)  Evaluate dynamic code chunks. Code chunks can do anything, but will
-    mostly be used used to:
-
--   Create the `ellmer::Chat` object, which details which provider and
-    model to use.
--   Inject context (emit output).
--   Register tools
-
-2)  The document is rendered into a concrete (non-dynamic) chat turns
-    sheet, which is then parsed into a sequence of `ellmer::Turn`s.
-
-3)  The bundle of `Turn`s and `ToolDef`s are assembled and submitted to
-    the LLM provider as a request for completion.
-
-4)  The LLM response is then streamed back into the original text
-    document under a new `## LLM` heading.
-
-5)  For subsequent turns, you can choose to either continue by appending
-    a new `## User` turn to the document, or rerun to replace the
-    previous LLM response. In between turns you are free to inspect and
-    edit the full context--it's all plain markdown text.
+When you're ready for the next turn, rerun `run_chat_sheet()`: if
+there’s a new `# User` turn at the end, the next LLM response is
+appended; otherwise, the previous LLM response is replaced.
 
 ------------------------------------------------------------------------
 
-## Why (redux)
+## Disposable *and* Deployable
 
-In my opinion, today, the most genuinely helpful interactions with LLMs
-tend to be one-off rubber-ducking sessions; ephemeral interactions where
-the output is quickly discarded, similar to a web search or an EDA
-session at the REPL. For this reason the first focus in promptdown is on
-the interactive experience: to let you quickly and easily compose and
-refine a context using mature text composition tools seeped in the
-literate programming paradigm; to be a viable alternative to the chat
-interface.
+Some of the most helpful interactions with LLMs are quick and
+disposable: rubber-ducking sessions exploring ideas, with the output
+quickly discarded. These are similar to a web search or an EDA session
+at the REPL.
 
-However, "agentic" LLM workflows are just around the corner (if not here
-already). Data professionals can bundle a prompt with some tool defs and
-deploy them to deliver value, similar in category to a dashboard, an
-automated email report, or an API. An "agent" meaning A carefully
-crafted prompt and set of tools, deployed on a trigger, schedule, or as
-a self-service endpoint for data consumers.
+Promptdown makes those easier by giving you powerful tools for quickly
+composing and refining prompts in a full-featured text environment.
 
-To enable this usecase, a promptdown document is also a deployable
-artifact, similar to an Rmarkdown document that gets deployed as a
-dashboard or an automated email report.
+But LLMs can also power more persistent, agent-like workflows. Data
+professionals can bundle a prompt with tools and deploy it, just like a
+dashboard or automated report.
 
-Creating a reliable LLM workflow is blend of coding and writing; it's
-assembling a text that has both code and prose, and where the code
-functions as prose and the prose functions as code. In this light,
-prompt composition, is yet another incarnation of the mature practice of
-literate programming.
-
-
-It’s literate programming for LLMs. The code is prose. The prose is
-code.
-
-------------------------------------------------------------------------
+Promptdown supports that too. A promptdown document is also a deployable
+artifact. Simply call `read_chat_sheet()` to get back an assembled
+`ellmer::Chat` object ready to submit completion requests.
 
 ## Additional conveniences
 
-Along with standard knitr engines (`r`, `python`, `julia`, `verbatim`,
-`embed`, etc.), promptdown adds two more:
+### Images
 
-### `tool`
+Images included with markdown syntax are automatically handled by
+`ellmer::content_image_file()`
+
+``` markdown
+![](/path/to/my/image.png)
+```
+
+### `ellmer::Content`
+
+Promptdown defines a custom render method for `ellmer::Content` objects
+returned by code chunks. This lets you include not just images, but
+other content types supported by ellmer (and the model). For example, to
+include a PDF in the completion request:
+
+```` markdown
+```{r}
+ellmer::content_pdf_file("/path/to/file.pdf")
+```
+````
+
+### `help()`
+
+promptdown also includes a custom render method for help objects,
+showing documentation as plain text in the markdown output. For example,
+to include help for `dplyr::filter`:
+
+```` markdown
+```{r}
+?dplyr::filter
+```
+````
+
+### Engines
+
+In addition to the standard knitr engines (`r`, `python`, `julia`,
+`verbatim`, `embed`, etc.), promptdown adds two more you can use:
+
+#### `tool` engine
 
 This simulates the LLM calling a tool. You can use it to quickly test
 tool definitions or generate the prompt dynamically.
@@ -208,17 +189,17 @@ get_current_weather(location = "New York")
 ```
 ````
 
-### `btw`
+#### `btw`
 
-The `{btw}` package offers helpers for assembling context quickly. Use
-the `{btw}` engine for fast previews using standard `btw::btw()` syntax:
+The [btw](https://posit-dev.github.io/btw/) package includes many
+helpers for assembling context quickly. Use the `{btw}` engine to
+preview content with standard `btw::btw()` syntax:
 
 ```` markdown
 ```{btw}
 mtcars
 ```
 
-````markdown
 ## Context
 
 mtcars
@@ -226,4 +207,3 @@ mtcars
 {"n_cols":11,"n_rows":32,"groups":[],"class":"data.frame","columns":{...}}
 ```
 ````
-`````
