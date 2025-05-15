@@ -23,7 +23,13 @@ Key features:
 
 ## Example chat session
 
-<video src="https://github.com/user-attachments/assets/dd380d1b-8464-42e8-9ca8-9bd745f67697" width="640" autoplay loop muted></video>
+<div align="center">
+  <video 
+      src="https://github.com/user-attachments/assets/e8551c33-1862-4cdf-a992-3fb60796acc5" style="max-width:70%;"
+      autoplay loop muted>
+  </video>
+</div>
+
 
 ## Install
 
