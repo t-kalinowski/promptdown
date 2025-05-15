@@ -23,8 +23,7 @@ Key features:
 
 ## Example chat session
 
-![intro demo
-video](https://github.com/user-attachments/assets/ec77daf8-975a-4f06-83da-f9572deeedf3)
+<video src="https://github.com/user-attachments/assets/dd380d1b-8464-42e8-9ca8-9bd745f67697" width="640" autoplay loop muted></video>
 
 ## Install
 
