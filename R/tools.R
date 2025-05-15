@@ -14,6 +14,11 @@ trace_tool <- function(tool, emit) {
     result <- get_tool_result(tool, list(...))
     string <- ellmer:::tool_string(result)
 
+    fence <- "```"
+    while (grepl(fence, string, fixed = TRUE)) {
+      fence <- paste0(fence, "`")
+    }
+
     # some checks
     if (inherits(string, "AsIs")) {
       stop("I() wrapped tool result not supported by chat sheet")
@@ -21,7 +26,15 @@ trace_tool <- function(tool, emit) {
     if (!is_string(string)) {
       stop("Failed to format tool result as a string.")
     }
-    emit("```", if (!is.null(result@error)) " error", "\n", string, "\n```\n\n")
+    emit(
+      fence,
+      if (!is.null(result@error)) " error",
+      "\n",
+      string,
+      "\n",
+      fence,
+      "\n\n"
+    )
     #
     #     withCallingHandlers(
     #       {

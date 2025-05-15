@@ -1,11 +1,13 @@
 ```{r, echo = FALSE}
 knitr::opts_chunk$set(comment = '', echo = T)
 chat <- ellmer::chat_ollama(model = "qwen3:4b")
+chat <- ellmer::chat_openai(model = "gpt-4.1-nano")
+
 ```
 
 # System
 
-You are an expert R programmer and mentor.
+You are a helpful and terse assistant with a flat affect.
 
 ```{r, echo = FALSE}
 get_current_weather <- function(location = "") {
@@ -16,19 +18,9 @@ get_current_weather <- function(location = "") {
       required = TRUE
     )
   ))
+
   list(temp = 65, conditions = "sunny")
 }
-# find_tool_declaration(get_current_weather)
-```
-
-foo
-
-```{btw}
-df
-```
-
-```{tool}
-get_current_weather(loc = "newyork")
 ```
 
 # User
@@ -38,23 +30,13 @@ Whats the weather in new york?
 # LLM
 
 ``` tool
-get_current_weather(location = "new york")
+get_current_weather(location = "New York")
 ```
 
 ```         
 {"temp":65,"conditions":"sunny"}
 ```
 
-<think> Okay, the user asked for the weather in New York. I called the
-get_current_weather function with location set to "new york". The
-response came back with a temperature of 65 and conditions "sunny". Now
-I need to present this information in a clear and friendly way. Let me
-check if there are any other details needed, but the function only
-provided temp and conditions. I'll format the answer to include both
-elements and make sure it's easy to read. Maybe add a sentence about it
-being a nice day. Alright, time to put it all together. </think>
-
-The current weather in New York is **65°F** with **sunny** conditions.
-It's a nice day! ☀️
+The weather in New York is sunny with a temperature of 65°F.
 
 # User
