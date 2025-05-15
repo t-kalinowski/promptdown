@@ -94,8 +94,8 @@ MultiEmitter <- R6::R6Class(
       self$emitters <- targets |> drop_nulls() |> lapply(Emitter$new)
     },
 
-    emit = function(msg) {
-      msg <- stri_flatten(msg)
+    emit = function(...) {
+      msg <- stri_flatten(unlist(c(character(), ...)))
       for (emitter in self$emitters) {
         emitter$emit(msg)
       }
