@@ -30,7 +30,10 @@ Imports:
     coro,
     uuid,
     glue,
-    dotty
+    dotty,
+    base64enc,
+    tools,
+    commonmark
 Remotes: 
     tidyverse/ragnar,
     posit-dev/btw
