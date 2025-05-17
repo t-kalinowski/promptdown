@@ -123,9 +123,12 @@ turns_to_html <- function(turns, embed_images = TRUE) {
       tolower(role)
     )
     
-    # Create minimal turn container
+    # Create turn container with alignment based on role
+    # Right-align user messages
+    align_style <- if (role == "user") ' style="text-align: right;"' else ''
+    
     turn_html <- paste0(
-      '<div data-role="', html_escape(role), '">',
+      '<div data-role="', html_escape(role), '"', align_style, '>',
       '<h2>', role_display, '</h2>',
       '<div>'
     )
