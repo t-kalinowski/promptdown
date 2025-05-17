@@ -4,7 +4,8 @@
       "Bash(rg:*)",
       "Bash(grep:*)",
       "Bash(sed:*)",
-      "Bash(Rscript:*)"
+      "Bash(Rscript:*)",
+      "Bash(mv:*)"
     ],
     "deny": []
   }

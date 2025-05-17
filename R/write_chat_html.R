@@ -1,60 +1,58 @@
 #' Write Chat as HTML
 #'
 #' Converts an ellmer::Chat object to a self-contained HTML file that can be viewed in a browser.
-#' The HTML file contains all the styling and formatting needed to display the chat conversation,
-#' similar to how it's displayed in the chat viewer app.
 #'
 #' @param chat An ellmer::Chat object containing the conversation
 #' @param output_path Path where to save the HTML file. If NULL, returns the HTML as a string
-#' @param theme Visual theme to use. Options are "light" or "dark"
+#' @param theme Visual theme to use. Options are "light" or "dark" (ignored in minimal mode)
 #' @param embed_images Logical. If TRUE, images will be embedded as base64 data URLs
 #'
 #' @return Invisibly, the HTML content as a string
 #'
 #' @export
 write_chat_html <- function(chat, output_path = NULL, theme = "light", embed_images = TRUE) {
-  # Validate the chat object
-  if (!(is.list(chat) || inherits(chat, c("ellmer::Chat", "Chat", "R6")))) {
-    stop("'chat' must be an ellmer::Chat object or a list of turns")
-  }
-  
-  # Special case for a Chat that we know about
-  turns <- NULL
-  
-  # Handle known chat object types
-  if (inherits(chat, "Chat") && inherits(chat, "R6")) {
-    # We have an R6 Chat object - try to extract turns directly
+  # Try to get turns from the chat object
+  turns <- tryCatch({
+    # Most Chat objects have a get_turns method
     if (is.function(chat$get_turns)) {
-      turns <- tryCatch(
-        chat$get_turns(include_system_prompt = TRUE),
-        error = function(e) NULL
-      )
-    }
-  } 
-  
-  # If we don't have turns yet, try the general approach
-  if (is.null(turns)) {
-    turns <- if (is.list(chat) && !is.function(chat$get_turns)) {
-      chat  # Assume it's already a list of turns
+      chat$get_turns(include_system_prompt = TRUE)
+    } else if (is.list(chat)) {
+      # Assume it's already a list of turns
+      chat
     } else {
-      # Try to get turns from a Chat-like object with get_turns method
-      tryCatch(
-        chat$get_turns(include_system_prompt = TRUE),
-        error = function(e) {
-          stop("Could not get turns from the chat object. ",
-              "Make sure it has a 'get_turns' method or pass a list of turns directly.", 
-              call. = FALSE)
-        }
-      )
+      stop("Cannot extract turns from chat object")
+    }
+  }, error = function(e) {
+    stop("Could not get turns from the chat object. Make sure it has a 'get_turns' method or pass a list of turns directly.")
+  })
+  
+  # Add debug info about the chat object
+  message("Processing chat with ", length(turns), " turns")
+  
+  # Debug print first turn structure
+  if (length(turns) > 0) {
+    first_turn <- turns[[1]]
+    message("First turn class: ", paste(class(first_turn), collapse = ", "))
+    
+    # Try to access contents
+    contents <- tryCatch({
+      if (is.list(first_turn$contents)) {
+        first_turn$contents
+      } else {
+        # Try direct attribute access as fallback
+        first_turn@contents
+      }
+    }, error = function(e) NULL)
+    
+    message("Contents count: ", length(contents))
+    
+    if (length(contents) > 0) {
+      message("First content class: ", paste(class(contents[[1]]), collapse = ", "))
     }
   }
-  
-  # Add debug info about the chat object class
-  message("Processing chat object of class: ", paste(class(chat), collapse = ", "))
-  message("Number of turns: ", length(turns))
   
   # Convert turns directly to HTML
-  html <- turns_to_html(turns, theme, embed_images)
+  html <- turns_to_html(turns, embed_images)
   
   # Write to file if path is provided
   if (!is.null(output_path)) {
@@ -66,14 +64,10 @@ write_chat_html <- function(chat, output_path = NULL, theme = "light", embed_ima
 
 #' Convert Chat Turns Directly to HTML
 #' 
-#' @param turns List of ellmer::Turn objects
-#' @param theme "light" or "dark"
+#' @param turns List of turn objects
 #' @param embed_images Logical. If TRUE, images will be embedded as base64 data URLs
 #' @return Complete HTML document as a string
-turns_to_html <- function(turns, theme = "light", embed_images = TRUE) {
-  # Get the appropriate CSS based on theme
-  css <- if (theme == "dark") dark_theme_css else light_theme_css
-  
+turns_to_html <- function(turns, embed_images = TRUE) {
   # Generate a title based on timestamp
   title <- paste("Chat -", format(Sys.time(), "%Y-%m-%d %H:%M:%S"))
   
@@ -82,22 +76,46 @@ turns_to_html <- function(turns, theme = "light", embed_images = TRUE) {
   
   # Process each turn
   for (turn in turns) {
-    # Get turn role and create heading - using safer access method
-    role <- tryCatch({
-      # First try S7/S4 slot access - this is the most common for ellmer objects
-      if (inherits(turn, c("S7_object", "S4"))) {
-        turn@role
-      } else if (is.function(turn$role)) {
-        turn$role()
-      } else if (is.character(turn$role)) {
-        turn$role
-      } else {
-        "unknown"
-      }
-    }, error = function(e) {
-      "unknown"
-    })
+    # Print debug info for this turn
+    if (TRUE) {
+      message("Turn class: ", paste(class(turn), collapse = ", "))
+    }
     
+    # Get role - directly check for common patterns
+    role <- "unknown"
+    
+    # Try as a list/environment
+    if (is.list(turn) || is.environment(turn)) {
+      if (!is.null(turn$role)) {
+        if (is.character(turn$role)) {
+          role <- turn$role
+        } else if (is.function(turn$role)) {
+          role <- turn$role()
+        }
+      }
+    }
+    
+    # If still unknown, try direct attribute access
+    if (role == "unknown") {
+      tryCatch({
+        role_val <- eval(parse(text = "turn@role"))
+        if (!is.null(role_val) && is.character(role_val)) {
+          role <- role_val
+        }
+      }, error = function(e) {})
+    }
+    
+    # If still unknown, try introspecting the object
+    if (role == "unknown" && any(c("system", "user", "assistant") %in% names(turn))) {
+      for (possible_role in c("system", "user", "assistant")) {
+        if (!is.null(turn[[possible_role]]) && turn[[possible_role]]) {
+          role <- possible_role
+          break
+        }
+      }
+    }
+    
+    # Simple role display
     role_display <- switch(role,
       "system" = "System",
       "user" = "User",
@@ -105,32 +123,68 @@ turns_to_html <- function(turns, theme = "light", embed_images = TRUE) {
       tolower(role)
     )
     
-    heading_class <- switch(role,
-      "system" = "system-heading",
-      "user" = "user-heading",
-      "assistant" = "llm-heading"
-    )
-    
-    # Create turn container with data attributes
+    # Create minimal turn container
     turn_html <- paste0(
-      '<div class="turn" data-role="', html_escape(role), '">',
-      '<h1 class="', heading_class, '">', role_display, '</h1>',
-      '<div class="turn-content">'
+      '<div data-role="', html_escape(role), '">',
+      '<h2>', role_display, '</h2>',
+      '<div>'
     )
     
-    # Get contents - handle different object types
-    contents <- tryCatch({
-      # First try S7/S4 slot access - this is the most common for ellmer objects
-      if (inherits(turn, c("S7_object", "S4"))) {
-        turn@contents
-      } else if (is.list(turn$contents)) {
-        turn$contents
-      } else {
-        list()
+    # Get contents (from either turn$contents or turn@contents)
+    contents <- list()
+    
+    # Check for S7 objects specially
+    if (inherits(turn, c("S7_object", "ellmer::"))) {
+      message("Processing S7 turn - direct access contents")
+      
+      # Try direct slot access for S7 objects
+      tryCatch({
+        # Use direct slot access without checking first
+        contents_val <- turn@contents
+        message("S7 contents access successful, length: ", length(contents_val))
+        
+        # If it's a list, use it directly
+        if (is.list(contents_val)) {
+          contents <- contents_val
+          message("Contents is a list, length: ", length(contents))
+        } else if (is.character(contents_val)) {
+          # If it's a character string, wrap it
+          contents <- list(list(text = contents_val))
+          message("Contents is a character string, wrapped as text")
+        } else {
+          message("Contents is another type: ", class(contents_val))
+        }
+      }, error = function(e) {
+        message("S7 contents access error: ", e$message)
+      })
+    } 
+    # Try as a list/environment if not S7 or if S7 failed
+    else if (is.list(turn) || is.environment(turn)) {
+      if (!is.null(turn$contents)) {
+        if (is.list(turn$contents)) {
+          contents <- turn$contents
+        } else if (is.character(turn$contents)) {
+          # If it's a simple character string, wrap it
+          contents <- list(list(text = turn$contents))
+        }
       }
-    }, error = function(e) {
-      list()
-    })
+    }
+    
+    # If still empty, check for common content patterns
+    if (length(contents) == 0) {
+      # Look for content, text, or message fields
+      for (field in c("content", "text", "message")) {
+        if (!is.null(turn[[field]]) && !is.function(turn[[field]])) {
+          contents <- list(list(text = as.character(turn[[field]])))
+          break
+        }
+      }
+    }
+    
+    # If we still have no contents, create a placeholder
+    if (length(contents) == 0) {
+      contents <- list(list(text = paste("Turn with role:", role_display, "- no content available")))
+    }
     
     # Process each content in the turn
     for (content in contents) {
@@ -145,7 +199,7 @@ turns_to_html <- function(turns, theme = "light", embed_images = TRUE) {
   # Combine all turns HTML
   content_html <- paste(turn_html_parts, collapse = "\n\n")
   
-  # Create the complete HTML document
+  # Create minimal HTML document without custom CSS
   html_document <- paste0(
     "<!DOCTYPE html>\n",
     "<html>\n",
@@ -153,12 +207,11 @@ turns_to_html <- function(turns, theme = "light", embed_images = TRUE) {
     "  <meta charset=\"UTF-8\">\n",
     "  <meta name=\"viewport\" content=\"width=device-width, initial-scale=1.0\">\n",
     "  <title>", title, "</title>\n",
-    "  <style>\n", css, "\n  </style>\n",
     "</head>\n",
     "<body>\n",
-    "  <div class=\"container\">\n",
-    "    <h1 class=\"chat-title\">", title, "</h1>\n",
-    "    <div class=\"chat-content\">\n",
+    "  <div>\n",
+    "    <h1>", title, "</h1>\n",
+    "    <div>\n",
     content_html,
     "\n    </div>\n",
     "  </div>\n",
@@ -171,146 +224,104 @@ turns_to_html <- function(turns, theme = "light", embed_images = TRUE) {
 
 #' Convert a Single Content Object to HTML
 #' 
-#' @param content An ellmer Content object or simple list with content properties
+#' @param content A content object or list
 #' @param embed_images Whether to embed images as base64 data URLs
 #' @return HTML string representation
 content_to_html <- function(content, embed_images = TRUE) {
-  # Detect content type and properties directly
-  if (is.list(content)) {
-    # Handle simple list content
-    
-    # Check if it's text content
-    if (!is.null(content$text)) {
-      text <- content$text
-      if (!is.character(text)) {
-        text <- as.character(text)
+  # Handle text content
+  if (is_text_content(content)) {
+    text <- get_text_content(content)
+    text_html <- commonmark::markdown_html(text)
+    return(paste0('<div data-type="text">', text_html, '</div>'))
+  }
+  
+  # Handle image content
+  if (is_image_content(content)) {
+    # Try to get image path or data
+    path <- get_image_path(content)
+    if (!is.null(path) && path != "") {
+      # Handle file-based image
+      img_src <- if (embed_images && file.exists(path)) {
+        # Embed as base64
+        mime_type <- get_mime_type(path)
+        base64_data <- base64_encode_file(path)
+        paste0("data:image/", mime_type, ";base64,", base64_data)
+      } else {
+        # Use path directly
+        html_escape(path)
       }
-      text_html <- commonmark::markdown_html(text)
+      
       return(paste0(
-        '<div class="content-text" data-type="text">',
-        text_html,
+        '<div data-type="image">',
+        '<img alt="" src="', img_src, '">',
         '</div>'
       ))
     }
     
-    # Check if it's image content by looking for various possible image properties
-    # First check for path/URI
-    image_path <- NULL
-    for (prop_name in c("path", "uri", "url", "src", "source")) {
-      if (!is.null(content[[prop_name]]) && content[[prop_name]] != "") {
-        image_path <- as.character(content[[prop_name]])
-        break
-      }
-    }
-    
-    if (!is.null(image_path)) {
-      if (image_path != "") {
-        # Generate image source - either embed as base64 or use file path
-        img_src <- if (embed_images && file.exists(image_path)) {
-          paste0("data:image/", get_mime_type(image_path), ";base64,", 
-                 base64_encode_file(image_path))
-        } else {
-          html_escape(image_path)
-        }
-        
-        # Return HTML image tag with proper styling
-        return(paste0(
-          '<div class="content-image" data-type="image">',
-          '<img alt="" src="', img_src, '" style="max-width:100%;display:block;margin:10px 0;">',
-          '</div>'
-        ))
-      } else {
-        return('<div class="content-image" data-type="image">(image path is empty)</div>')
-      }
-    }
-    
-    # Check for direct base64/data content
-    image_data <- NULL
-    for (prop_name in c("base64", "data", "image_data", "content")) {
-      if (!is.null(content[[prop_name]]) && content[[prop_name]] != "") {
-        image_data <- as.character(content[[prop_name]])
-        break
-      }
-    }
-    
-    if (!is.null(image_data)) {
-      # If we have base64 data, use it directly
-      img_src <- if (grepl("^data:image/", image_data)) {
+    # Check for direct base64 data
+    data <- get_image_data(content)
+    if (!is.null(data) && data != "") {
+      img_src <- if (grepl("^data:image/", data)) {
         # Already a data URL
-        image_data
+        data
       } else {
-        # Assume it's raw base64 data
-        paste0("data:image/png;base64,", image_data)
+        # Raw base64 data
+        paste0("data:image/png;base64,", data)
       }
       
       return(paste0(
-        '<div class="content-image" data-type="image">',
-        '<img alt="" src="', img_src, '" style="max-width:100%;display:block;margin:10px 0;">',
+        '<div data-type="image">',
+        '<img alt="" src="', img_src, '">',
         '</div>'
       ))
     }
     
-    # Check if it's clearly an image type by its class or type
-    if (!is.null(content$type) && grepl("image", content$type, ignore.case = TRUE)) {
-      # This is an image type but we couldn't find path or data
-      return('<div class="content-image" data-type="image">(image data not found)</div>')
-    }
+    # No valid image data found
+    return('<div data-type="image">(image not available)</div>')
+  }
+  
+  # Handle tool request/result content
+  if (has_property(content, "name") && has_property(content, "arguments")) {
+    # Tool request
+    name <- get_property(content, "name", "unknown")
+    args <- get_property(content, "arguments", list())
+    id <- get_property(content, "id", "")
     
-    # Check if it's tool request content
-    if (!is.null(content$name) && !is.null(content$arguments)) {
-      name <- as.character(content$name)
-      args <- content$arguments
-      id <- if (!is.null(content$id)) as.character(content$id) else ""
-      
-      # Format tool call
-      call_text <- tryCatch({
-        if (is.call(args)) {
-          # If args is already a call, deparse it
-          deparse(args, width.cutoff = 60)
-        } else {
-          # Try to build a call and deparse it
-          rlang::call2(name, !!!args) |>
-            rlang::expr_deparse(width = 60) |>
-            paste(collapse = "\n")
-        }
-      }, error = function(e) {
-        paste("Tool call:", name, "\nArguments:", 
-              paste(capture.output(print(args)), collapse = "\n"))
-      })
-      
+    # Format tool call
+    call_text <- format_tool_call(name, args)
+    
+    return(paste0(
+      '<div data-type="tool-request" data-tool-id="', html_escape(id), 
+      '" data-tool-name="', html_escape(name), '">',
+      '<pre><code>', html_escape(call_text), '</code></pre>',
+      '</div>'
+    ))
+  }
+  
+  if (has_property(content, "value") || has_property(content, "error")) {
+    # Tool result
+    id <- get_property(content, "id", "")
+    error <- get_property(content, "error", NULL)
+    value <- get_property(content, "value", "")
+    
+    if (is.null(error)) {
       return(paste0(
-        '<div class="content-tool-request" data-type="tool-request" data-tool-id="', 
-        html_escape(id), '" data-tool-name="', html_escape(name), '">',
-        '<pre class="code-block"><code>', html_escape(call_text), '</code></pre>',
+        '<div data-type="tool-result" data-tool-id="', html_escape(id), '">',
+        '<pre><code>', html_escape(value), '</code></pre>',
+        '</div>'
+      ))
+    } else {
+      return(paste0(
+        '<div data-type="tool-error" data-tool-id="', html_escape(id), '">',
+        '<pre><code>', html_escape(error), '</code></pre>',
         '</div>'
       ))
     }
-    
-    # Check if it's tool result content
-    if (!is.null(content$value) || !is.null(content$error)) {
-      id <- if (!is.null(content$id)) as.character(content$id) else ""
-      
-      if (is.null(content$error)) {
-        value <- if (is.character(content$value)) content$value else as.character(content$value)
-        return(paste0(
-          '<div class="content-tool-result" data-type="tool-result" data-tool-id="', 
-          html_escape(id), '">',
-          '<pre class="tool-result"><code>', html_escape(value), '</code></pre>',
-          '</div>'
-        ))
-      } else {
-        error <- if (is.character(content$error)) content$error else as.character(content$error)
-        return(paste0(
-          '<div class="content-tool-error" data-type="tool-error" data-tool-id="', 
-          html_escape(id), '">',
-          '<pre class="tool-error"><code>', html_escape(error), '</code></pre>',
-          '</div>'
-        ))
-      }
-    }
-    
-    # For other list-based content, create a generic representation
-    # Filter out functions and convert to YAML
+  }
+  
+  # Generic content fallback - try to convert to YAML
+  if (is.list(content)) {
+    # Filter out functions and environments
     content_safe <- lapply(content, function(item) {
       if (is.function(item) || is.environment(item)) return(NULL)
       item
@@ -318,184 +329,153 @@ content_to_html <- function(content, embed_images = TRUE) {
     content_safe <- content_safe[!sapply(content_safe, is.null)]
     
     if (length(content_safe) > 0) {
-      content_yaml <- tryCatch(
+      # Convert to YAML or plain text
+      content_text <- tryCatch(
         yaml::as.yaml(content_safe),
         error = function(e) paste(capture.output(print(content_safe)), collapse = "\n")
       )
       
       return(paste0(
-        '<div class="content-other" data-type="generic">',
-        '<pre class="code-block"><code>', html_escape(content_yaml), '</code></pre>',
+        '<div data-type="generic">',
+        '<pre><code>', html_escape(content_text), '</code></pre>',
         '</div>'
       ))
-    } else {
-      return('<div class="content-empty">(empty content)</div>')
     }
-  } else if (is.character(content)) {
-    # If content is just a character string, treat it as text
-    text_html <- commonmark::markdown_html(content)
-    return(paste0(
-      '<div class="content-text" data-type="text">',
-      text_html,
-      '</div>'
-    ))
-  } else if (inherits(content, c("S7_object", "S4"))) {
-    # Try to extract S7/S4 object content
-    
-    # Try to get content class
-    content_class <- class(content)[1]
-    content_type <- gsub("^.*::", "", content_class)
-    
-    # Check for specific known types
-    if (grepl("ContentText", content_class)) {
-      # Get text and convert to HTML
-      text <- tryCatch(content@text, error = function(e) as.character(content))
-      text_html <- commonmark::markdown_html(text)
-      return(paste0(
-        '<div class="content-text" data-type="text">',
-        text_html,
-        '</div>'
-      ))
-    } else if (grepl("ContentImage", content_class) || grepl("image", content_class, ignore.case = TRUE)) {
-      # Get image path and create image tag - try all possible property names
-      path <- tryCatch({
-        # Try all possible property names for the path using slot access
-        for (prop_name in c("path", "uri", "url", "src", "source")) {
-          # Use a safer way to check for slots
-          if (prop_name %in% methods::slotNames(content)) {
-            path_value <- methods::slot(content, prop_name)
-            if (!is.null(path_value) && path_value != "") {
-              return(path_value)
-            }
-          }
-        }
-        NULL
-      }, error = function(e) NULL)
-      
-      if (!is.null(path) && path != "") {
-        # Generate image source
-        img_src <- if (embed_images && file.exists(path)) {
-          paste0("data:image/", get_mime_type(path), ";base64,", 
-                 base64_encode_file(path))
-        } else {
-          html_escape(path)
-        }
-        
-        return(paste0(
-          '<div class="content-image" data-type="image">',
-          '<img alt="" src="', img_src, '" style="max-width:100%;display:block;margin:10px 0;">',
-          '</div>'
-        ))
-      } else {
-        # Check if we already have a base64 data URI directly in the object
-        img_data <- tryCatch({
-          for (prop_name in c("base64", "data", "image_data", "content")) {
-            # Use a safer way to check for slots
-            if (prop_name %in% methods::slotNames(content)) {
-              data_value <- methods::slot(content, prop_name)
-              if (!is.null(data_value) && data_value != "") {
-                return(data_value)
-              }
-            }
-          }
-          NULL
-        }, error = function(e) NULL)
-        
-        if (!is.null(img_data) && img_data != "") {
-          # If we have base64 data, use it directly
-          img_src <- if (grepl("^data:image/", img_data)) {
-            # Already a data URL
-            img_data
-          } else {
-            # Assume it's raw base64 data
-            paste0("data:image/png;base64,", img_data)
-          }
-          
-          return(paste0(
-            '<div class="content-image" data-type="image">',
-            '<img alt="" src="', img_src, '" style="max-width:100%;display:block;margin:10px 0;">',
-            '</div>'
-          ))
-        } else {
-          return('<div class="content-image" data-type="image">(image data not found)</div>')
-        }
-      }
-    } else if (grepl("ContentToolRequest", content_class)) {
-      # Format tool request
-      name <- tryCatch(content@name, error = function(e) "unknown")
-      args <- tryCatch(content@arguments, error = function(e) list())
-      id <- tryCatch(content@id, error = function(e) "")
-      
-      # Format the call
-      call_text <- tryCatch({
-        rlang::call2(name, !!!args) |>
-          rlang::expr_deparse(width = 60) |>
-          paste(collapse = "\n")
-      }, error = function(e) {
-        paste("Tool call:", name, "\nArguments:", 
-              paste(capture.output(print(args)), collapse = "\n"))
-      })
-      
-      return(paste0(
-        '<div class="content-tool-request" data-type="tool-request" data-tool-id="', 
-        html_escape(id), '" data-tool-name="', html_escape(name), '">',
-        '<pre class="code-block"><code>', html_escape(call_text), '</code></pre>',
-        '</div>'
-      ))
-    } else if (grepl("ContentToolResult", content_class)) {
-      # Format tool result
-      id <- tryCatch(content@id, error = function(e) "")
-      error <- tryCatch(content@error, error = function(e) NULL)
-      value <- tryCatch(content@value, error = function(e) "")
-      
-      if (is.null(error)) {
-        return(paste0(
-          '<div class="content-tool-result" data-type="tool-result" data-tool-id="', 
-          html_escape(id), '">',
-          '<pre class="tool-result"><code>', html_escape(value), '</code></pre>',
-          '</div>'
-        ))
-      } else {
-        return(paste0(
-          '<div class="content-tool-error" data-type="tool-error" data-tool-id="', 
-          html_escape(id), '">',
-          '<pre class="tool-error"><code>', html_escape(error), '</code></pre>',
-          '</div>'
-        ))
-      }
-    } else {
-      # For other S7/S4 content, try to get properties
-      props <- tryCatch(S7::props(content), error = function(e) as.list(content))
-      
-      if (length(props) > 0) {
-        # Filter out functions
-        props_safe <- lapply(props, function(prop) {
-          if (is.function(prop) || is.environment(prop)) return(NULL)
-          prop
-        })
-        props_safe <- props_safe[!sapply(props_safe, is.null)]
-        
-        content_yaml <- tryCatch(
-          yaml::as.yaml(props_safe),
-          error = function(e) paste(capture.output(print(props_safe)), collapse = "\n")
-        )
-        
-        return(paste0(
-          '<div class="content-other" data-type="', content_type, '">',
-          '<pre class="code-block"><code>', html_escape(content_yaml), '</code></pre>',
-          '</div>'
-        ))
-      } else {
-        return(paste0('<div class="content-empty">(empty ', content_type, ' content)</div>'))
-      }
+  }
+  
+  # If we got here, we couldn't determine the content type
+  return(paste0(
+    '<div data-type="unknown">',
+    '<pre><code>', html_escape(paste("Unknown content type")), '</code></pre>',
+    '</div>'
+  ))
+}
+
+# Helper functions - with special S7 handling
+
+is_text_content <- function(content) {
+  # Direct check for S7 ContentText objects
+  if (inherits(content, c("ellmer::ContentText", "ContentText", "S7_object"))) {
+    message("Found S7 content text object")
+    return(TRUE)
+  }
+  
+  # Regular checks
+  if (is.character(content)) return(TRUE)
+  if (has_property(content, "text")) return(TRUE)
+  FALSE
+}
+
+get_text_content <- function(content) {
+  # Direct handling for S7 ContentText objects
+  if (inherits(content, c("ellmer::ContentText", "ContentText", "S7_object"))) {
+    message("Extracting text from S7 content text object")
+    tryCatch({
+      text_val <- content@text
+      if (!is.null(text_val)) return(as.character(text_val))
+    }, error = function(e) {
+      message("Error accessing S7 content text: ", e$message)
+    })
+  }
+  
+  # Regular handling
+  if (is.character(content)) return(content)
+  if (has_property(content, "text")) return(as.character(get_property(content, "text")))
+  
+  # Don't try to convert non-character content directly
+  # Instead return a placeholder
+  "Content not available as text"
+}
+
+is_image_content <- function(content) {
+  # Look for typical image properties
+  for (prop in c("path", "uri", "url", "src", "source", "base64", "data", "image_data")) {
+    if (has_property(content, prop)) return(TRUE)
+  }
+  FALSE
+}
+
+get_image_path <- function(content) {
+  # Try various properties that might hold a path
+  for (prop in c("path", "uri", "url", "src", "source")) {
+    if (has_property(content, prop)) {
+      val <- get_property(content, prop)
+      if (!is.null(val) && val != "") return(as.character(val))
     }
+  }
+  NULL
+}
+
+get_image_data <- function(content) {
+  # Try various properties that might hold image data
+  for (prop in c("base64", "data", "image_data", "content")) {
+    if (has_property(content, prop)) {
+      val <- get_property(content, prop)
+      if (!is.null(val) && val != "") return(as.character(val))
+    }
+  }
+  NULL
+}
+
+format_tool_call <- function(name, args) {
+  tryCatch({
+    if (is.call(args)) {
+      # If args is already a call, deparse it
+      deparse(args, width.cutoff = 60)
+    } else {
+      # Try to build a call and deparse it
+      rlang::call2(name, !!!args) |>
+        rlang::expr_deparse(width = 60) |>
+        paste(collapse = "\n")
+    }
+  }, error = function(e) {
+    paste("Tool call:", name, "\nArguments:", 
+          paste(capture.output(print(args)), collapse = "\n"))
+  })
+}
+
+# Generic property access helper functions - simplest possible approach
+
+has_property <- function(obj, prop) {
+  # For S7 objects, don't try to use [[
+  if (inherits(obj, c("S7_object", "ellmer::"))) {
+    # Use direct attribute access safely
+    tryCatch({
+      val <- eval(parse(text = paste0("obj@", prop)))
+      !is.null(val)
+    }, error = function(e) FALSE)
+  } else if (is.list(obj) || is.environment(obj)) {
+    # For lists/environments, use direct access
+    !is.null(obj[[prop]])
   } else {
-    # For unsupported content types, return a simple representation
-    return(paste0(
-      '<div class="content-unknown">',
-      '<pre><code>', html_escape(paste("Unsupported content type:", class(content)[1])), '</code></pre>',
-      '</div>'
-    ))
+    # For other objects, try to be lenient
+    tryCatch({
+      val <- obj[[prop]]
+      !is.null(val)
+    }, error = function(e) FALSE)
+  }
+}
+
+get_property <- function(obj, prop, default = NULL) {
+  # For S7 objects, don't try to use [[
+  if (inherits(obj, c("S7_object", "ellmer::"))) {
+    # Use direct attribute access safely
+    tryCatch({
+      val <- eval(parse(text = paste0("obj@", prop)))
+      if (!is.null(val)) return(val)
+      default
+    }, error = function(e) default)
+  } else if (is.list(obj) || is.environment(obj)) {
+    # For lists/environments, use direct access
+    if (!is.null(obj[[prop]])) return(obj[[prop]])
+    default
+  } else {
+    # For other objects, try to be lenient
+    tryCatch({
+      val <- obj[[prop]]
+      if (!is.null(val)) return(val)
+      default
+    }, error = function(e) default)
   }
 }
 
@@ -524,7 +504,7 @@ base64_encode_file <- function(path) {
     return("")
   }
   
-  # Use base R for base64 encoding
+  # Use base64enc package for encoding
   contents <- readBin(path, "raw", file.info(path)$size)
   base64_string <- base64enc::base64encode(contents)
   return(base64_string)
@@ -539,280 +519,15 @@ get_mime_type <- function(path) {
   
   # Map common extensions to MIME types
   mime_types <- list(
-    png = "image/png",
-    jpg = "image/jpeg",
-    jpeg = "image/jpeg",
-    gif = "image/gif",
-    svg = "image/svg+xml",
-    webp = "image/webp",
-    bmp = "image/bmp"
+    png = "png",
+    jpg = "jpeg",
+    jpeg = "jpeg",
+    gif = "gif",
+    svg = "svg+xml",
+    webp = "webp",
+    bmp = "bmp"
   )
   
-  # Return the MIME type or default to jpeg
-  return(mime_types[[ext]] %||% "image/jpeg")
+  # Return the MIME type or default to png
+  return(mime_types[[ext]] %||% "png")
 }
-
-# Simplified CSS for standalone HTML
-light_theme_css <- "
-body {
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
-  line-height: 1.6;
-  color: #333;
-  background-color: #f8f9fa;
-  margin: 0;
-  padding: 0;
-}
-
-.container {
-  max-width: 900px;
-  margin: 0 auto;
-  padding: 20px;
-  background-color: #ffffff;
-  box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
-  min-height: 100vh;
-}
-
-.chat-title {
-  margin-bottom: 20px;
-  padding-bottom: 10px;
-  border-bottom: 1px solid #dee2e6;
-  color: #495057;
-}
-
-.chat-content {
-  padding: 10px 0;
-}
-
-.turn {
-  margin-bottom: 20px;
-  padding-bottom: 10px;
-  border-bottom: 1px solid #eee;
-}
-
-.turn-content {
-  margin-left: 15px;
-}
-
-.system-heading {
-  color: #6610f2;
-  border-bottom: 2px solid #6610f2;
-  padding-bottom: 5px;
-}
-
-.user-heading {
-  color: #0d6efd;
-  border-bottom: 2px solid #0d6efd;
-  padding-bottom: 5px;
-}
-
-.llm-heading {
-  color: #198754;
-  border-bottom: 2px solid #198754;
-  padding-bottom: 5px;
-}
-
-pre.code-block {
-  background-color: #f8f9fa;
-  border: 1px solid #ddd;
-  border-radius: 4px;
-  padding: 10px;
-  overflow-x: auto;
-  font-family: 'SFMono-Regular', Consolas, 'Liberation Mono', Menlo, Courier, monospace;
-  font-size: 0.9em;
-}
-
-pre.tool-result {
-  background-color: #e8f4f8;
-  border: 1px solid #b8daff;
-  border-radius: 4px;
-  padding: 10px;
-  overflow-x: auto;
-}
-
-pre.tool-error {
-  background-color: #f8d7da;
-  border: 1px solid #f5c6cb;
-  border-radius: 4px;
-  padding: 10px;
-  overflow-x: auto;
-}
-
-.content-text p, .content-text h1, .content-text h2, .content-text h3 {
-  margin-top: 0.5em;
-  margin-bottom: 0.5em;
-}
-
-.content-image img {
-  max-width: 100%;
-  display: block;
-  border-radius: 4px;
-  margin: 10px 0;
-}
-
-.content-tool-request, .content-tool-result, .content-tool-error, .content-image, .content-other {
-  margin: 10px 0;
-}
-
-blockquote {
-  border-left: 3px solid #6c757d;
-  padding-left: 15px;
-  color: #6c757d;
-  margin-left: 0;
-}
-
-table {
-  width: 100%;
-  margin-bottom: 1rem;
-  border-collapse: collapse;
-}
-
-table th,
-table td {
-  padding: 0.5rem;
-  border: 1px solid #dee2e6;
-}
-
-table th {
-  background-color: #f8f9fa;
-}
-
-code {
-  font-family: 'SFMono-Regular', Consolas, 'Liberation Mono', Menlo, Courier, monospace;
-  background-color: #f8f9fa;
-  padding: 2px 4px;
-  border-radius: 3px;
-  font-size: 0.9em;
-}
-"
-
-dark_theme_css <- "
-body {
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
-  line-height: 1.6;
-  color: #f8f9fa;
-  background-color: #222;
-  margin: 0;
-  padding: 0;
-}
-
-.container {
-  max-width: 900px;
-  margin: 0 auto;
-  padding: 20px;
-  background-color: #2c3034;
-  box-shadow: 0 0 10px rgba(0, 0, 0, 0.3);
-  min-height: 100vh;
-}
-
-.chat-title {
-  margin-bottom: 20px;
-  padding-bottom: 10px;
-  border-bottom: 1px solid #495057;
-  color: #adb5bd;
-}
-
-.chat-content {
-  padding: 10px 0;
-}
-
-.turn {
-  margin-bottom: 20px;
-  padding-bottom: 10px;
-  border-bottom: 1px solid #343a40;
-}
-
-.turn-content {
-  margin-left: 15px;
-}
-
-.system-heading {
-  color: #a78bfa;
-  border-bottom: 2px solid #a78bfa;
-  padding-bottom: 5px;
-}
-
-.user-heading {
-  color: #60a5fa;
-  border-bottom: 2px solid #60a5fa;
-  padding-bottom: 5px;
-}
-
-.llm-heading {
-  color: #34d399;
-  border-bottom: 2px solid #34d399;
-  padding-bottom: 5px;
-}
-
-pre.code-block {
-  background-color: #2c3034;
-  border: 1px solid #495057;
-  border-radius: 4px;
-  padding: 10px;
-  overflow-x: auto;
-  font-family: 'SFMono-Regular', Consolas, 'Liberation Mono', Menlo, Courier, monospace;
-  font-size: 0.9em;
-}
-
-pre.tool-result {
-  background-color: #1e3a5f;
-  border: 1px solid #0d6efd;
-  border-radius: 4px;
-  padding: 10px;
-  overflow-x: auto;
-}
-
-pre.tool-error {
-  background-color: #541e3a;
-  border: 1px solid #dc3545;
-  border-radius: 4px;
-  padding: 10px;
-  overflow-x: auto;
-}
-
-.content-text p, .content-text h1, .content-text h2, .content-text h3 {
-  margin-top: 0.5em;
-  margin-bottom: 0.5em;
-}
-
-.content-image img {
-  max-width: 100%;
-  display: block;
-  border-radius: 4px;
-  margin: 10px 0;
-}
-
-.content-tool-request, .content-tool-result, .content-tool-error, .content-image, .content-other {
-  margin: 10px 0;
-}
-
-blockquote {
-  border-left: 3px solid #adb5bd;
-  padding-left: 15px;
-  color: #adb5bd;
-  margin-left: 0;
-}
-
-table {
-  width: 100%;
-  margin-bottom: 1rem;
-  border-collapse: collapse;
-}
-
-table th,
-table td {
-  padding: 0.5rem;
-  border: 1px solid #495057;
-}
-
-table th {
-  background-color: #343a40;
-}
-
-code {
-  font-family: 'SFMono-Regular', Consolas, 'Liberation Mono', Menlo, Courier, monospace;
-  background-color: #343a40;
-  padding: 2px 4px;
-  border-radius: 3px;
-  font-size: 0.9em;
-}
-"
