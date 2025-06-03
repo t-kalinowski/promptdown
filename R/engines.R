@@ -10,14 +10,45 @@ eng_btw <- function(options) {
     if (
       startsWith(x, "@") || # @whatever
         startsWith(x, "./") || # ./file/path
+        startsWith(x, "~/") || # ~/file/path
         startsWith(x, "?") || # ?dplyr::across
         stri_detect_regex(x, "^\\{[a-zA-Z0-9.]+\\}$") # {dplyr}
     ) {
+      x
     } else {
       x <- str2lang(x)
     }
+    if (startsWith(x, "/") || startsWith(x, "~/"))
+      x <- file.path(".", fs::path_rel(x))
     x
   })
+
+  # allow btw to fetch files from outside current working directory
+  tryCatch(
+    {
+      btw_ns <- asNamespace("btw")
+      unlockBinding("check_path_within_current_wd", btw_ns)
+      check_path_within_current_wd <- btw_ns$check_path_within_current_wd
+      assign(
+        "check_path_within_current_wd",
+        function(path) invisible(NULL),
+        envir = btw_ns
+      )
+      on.exit(
+        {
+          assign(
+            "check_path_within_current_wd",
+            check_path_within_current_wd,
+            envir = btw_ns
+          )
+          lockBinding("check_path_within_current_wd", btw_ns)
+        },
+        add = TRUE
+      )
+    },
+    error = warning
+  )
+
   res <- do.call(
     btw::btw,
     c(args, clipboard = FALSE),
